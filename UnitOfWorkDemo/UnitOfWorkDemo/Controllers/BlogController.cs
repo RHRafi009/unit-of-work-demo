@@ -2,6 +2,8 @@
 using DataAccessWithEF.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.Design;
+using System.Reflection.Metadata;
 using UnitOfWorkDemo.Dtos;
 
 namespace UnitOfWorkDemo.Controllers
@@ -92,6 +94,51 @@ namespace UnitOfWorkDemo.Controllers
             }
 
             return blogResponse;
+        }
+
+        [HttpPost("CreateBlogComment")]
+        public async Task<BlogCommentResponseDto?> CreateBlogComment(BlogCommentCreateDto blogComment)
+        {
+            DataAccessWithEF.Models.User? CreatedByUser = await _unitOfWorkDemoDbContext
+                .Users
+                .Where(u => u.Id == blogComment.CommentedById)
+                .FirstOrDefaultAsync();
+            Blog? blog = await _unitOfWorkDemoDbContext
+                .Blogs
+                .Where(b => b.Id == blogComment.BlogId)
+                .FirstOrDefaultAsync();
+
+            BlogCommentResponseDto? responseDto = null;
+
+            if (CreatedByUser is not null &&
+                blog is not null)
+            {
+                BlogComment createdComment = new BlogComment()
+                {
+                    ParentBlog = blog,
+                    CreatedTime = DateTimeOffset.Now,
+                    CommentedByUser = CreatedByUser,
+                    LastEditedTime = DateTimeOffset.Now,
+                    CommentedOn = DateTimeOffset.Now,
+                    CommentContent = blogComment.Comment
+                };
+
+                _unitOfWorkDemoDbContext.BlogComments.Add(createdComment);
+
+                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+
+                responseDto = new BlogCommentResponseDto()
+                {
+                    CommentId = createdComment.Id,
+                    ParentBlogId = blog.Id,
+                    CommentedOn = createdComment.CommentedOn,
+                    CommentContent = createdComment.CommentContent,
+                    CommentedByEmail = createdComment.CommentedByUser.Email,
+                    CommentedByName = createdComment.CommentedByUser.Name
+                };
+            }
+
+            return responseDto;
         }
     }
 }
