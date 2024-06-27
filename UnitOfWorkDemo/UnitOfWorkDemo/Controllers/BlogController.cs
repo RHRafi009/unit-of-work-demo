@@ -54,5 +54,44 @@ namespace UnitOfWorkDemo.Controllers
 
             return blogs;
         }
+
+        [HttpPost("CreateBlog")]
+        public async Task<BlogResponseDto?> CreateBlog(BlogCreateDto blog)
+        {
+            DataAccessWithEF.Models.User? CreatedByUser = await _unitOfWorkDemoDbContext
+                .Users
+                .Where(u => u.Id == blog.CreatedById)
+                .FirstOrDefaultAsync();
+
+            BlogResponseDto? blogResponse = null;
+
+            if (CreatedByUser is not null)
+            {
+                Blog createdBlog = new Blog()
+                {
+                    IsPublished = blog.IsPublished,
+                    PublishedDate = blog.IsPublished ? DateTimeOffset.Now : null,
+                    CreatedByUser = CreatedByUser,
+                    CreatedTime = DateTimeOffset.Now,
+                    LastEditedTime = DateTimeOffset.Now,
+                    Content = blog.Content
+                };
+
+                _unitOfWorkDemoDbContext.Blogs.Add(createdBlog);
+
+                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+
+                blogResponse = new BlogResponseDto()
+                {
+                    BlogId = createdBlog.Id,
+                    CreatedByName = createdBlog.CreatedByUser.Name,
+                    CreatedByEmail = createdBlog.CreatedByUser.Email,
+                    BlogContent = createdBlog.Content,
+                    PublishedOn = createdBlog.PublishedDate ?? DateTimeOffset.Now,
+                };
+            }
+
+            return blogResponse;
+        }
     }
 }
