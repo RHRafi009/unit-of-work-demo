@@ -1,0 +1,5 @@
+﻿** Installing ef 
+dotnet tool install --global dotnet-ef
+
+** install ef tools => run it from package manager console
+Install-Package Microsoft.EntityFrameworkCore.Tools
