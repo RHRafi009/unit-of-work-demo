@@ -17,6 +17,6 @@ namespace DataAccessWithEF.Models
 
         public User CreatedByUser { get; set; }
         public User? ReviewedByUser { get; set; }
-        public IEnumerable<BlogComment>? Comments { get; set; }
+        public ICollection<BlogComment>? Comments { get; set; }
     }
 }
