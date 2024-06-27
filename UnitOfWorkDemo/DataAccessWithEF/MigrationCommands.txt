@@ -3,3 +3,11 @@ dotnet tool install --global dotnet-ef
 
 ** install ef tools => run it from package manager console
 Install-Package Microsoft.EntityFrameworkCore.Tools
+
+** Adding a migration
+dotnet ef migrations add Initial
+dotnet ef database update
+
+**** FROM Visual Studio
+Add-Migration Initial
+Updatte-Database
