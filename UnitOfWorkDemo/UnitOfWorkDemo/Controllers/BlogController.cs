@@ -45,7 +45,7 @@ namespace UnitOfWorkDemo.Controllers
                         {
                             CommentId = c.Id,
                             ParentBlogId = b.Id,
-                            CommentedByEmail = c.CommentedByUser.Name,
+                            CommentedByEmail = c.CommentedByUser.Email,
                             CommentedByName = c.CommentedByUser.Name,
                             CommentedOn = c.CommentedOn,
                             CommentContent = string.IsNullOrWhiteSpace(c.CommentContent) ? string.Empty : c.CommentContent,
@@ -94,6 +94,63 @@ namespace UnitOfWorkDemo.Controllers
             }
 
             return blogResponse;
+        }
+
+        [HttpPost("UpdateBlog")]
+        public async Task<BlogResponseDto?> UpdateBlog(UpdateBlogDto updateBlog)
+        {
+            Blog? blog = await _unitOfWorkDemoDbContext
+                .Blogs
+                .Include(b => b.CreatedByUser)
+                .FirstOrDefaultAsync(b => b.Id == updateBlog.BlogId);
+
+            BlogResponseDto? blogResponse = null;
+
+            if (blog is not null)
+            {
+                blog.LastEditedTime = DateTimeOffset.Now;
+                blog.IsPublished = updateBlog.IsPublished;
+                blog.PublishedDate = DateTimeOffset.Now;
+                blog.Content = updateBlog.Content;
+
+                _unitOfWorkDemoDbContext.Blogs.Update(blog);
+
+                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+
+                blogResponse = new BlogResponseDto()
+                {
+                    BlogId = blog.Id,
+                    CreatedByName = blog.CreatedByUser.Name,
+                    CreatedByEmail = blog.CreatedByUser.Email,
+                    PublishedOn = blog.PublishedDate ?? DateTimeOffset.Now,
+                    BlogContent = blog.Content,
+                    BlogComments = []
+                };
+            }
+
+            return blogResponse;
+        }
+
+        [HttpPost("DeleteBlog")]
+        public async Task<bool> DeleteBlog(int blogId)
+        {
+            Blog? blog = await _unitOfWorkDemoDbContext
+                .Blogs
+                .Include(b => b.CreatedByUser)
+                .FirstOrDefaultAsync(b => b.Id == blogId);
+
+            bool result = false;
+
+            if (blog is not null)
+            {
+                _unitOfWorkDemoDbContext.Blogs.Remove(blog);
+
+                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+
+                result = true;
+            }
+
+            return result;
         }
 
         [HttpPost("CreateBlogComment")]
