@@ -6,6 +6,6 @@ namespace DataAccessWithEF.Models
     {
         [Required]
         public DateTimeOffset CreatedTime { get; set; }
-        public DateTimeOffset LastEditedTime { get; set; }
+        public DateTimeOffset? LastEditedTime { get; set; }
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccessWithEF.Migrations
 {
     [DbContext(typeof(UnitOfWorkDemoDbContext))]
-    [Migration("20240627100126_Initial")]
+    [Migration("20240701094931_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -34,10 +34,10 @@ namespace DataAccessWithEF.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Content")
-                        .HasMaxLength(12000)
+                        .HasMaxLength(10000)
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("CreatedBy")
+                    b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("CreatedTime")
@@ -46,20 +46,20 @@ namespace DataAccessWithEF.Migrations
                     b.Property<bool>("IsPublished")
                         .HasColumnType("bit");
 
-                    b.Property<DateTimeOffset>("LastEditedTime")
+                    b.Property<DateTimeOffset?>("LastEditedTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset?>("PublishedDate")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<int?>("ReviewedBy")
+                    b.Property<int?>("ReviewedByUserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedBy");
+                    b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("ReviewedBy");
+                    b.HasIndex("ReviewedByUserId");
 
                     b.ToTable("Blogs");
                 });
@@ -76,7 +76,7 @@ namespace DataAccessWithEF.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("CommentedBy")
+                    b.Property<int>("CommentedByUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("CommentedOn")
@@ -85,7 +85,7 @@ namespace DataAccessWithEF.Migrations
                     b.Property<DateTimeOffset>("CreatedTime")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<DateTimeOffset>("LastEditedTime")
+                    b.Property<DateTimeOffset?>("LastEditedTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<int>("ParentBlogId")
@@ -93,7 +93,7 @@ namespace DataAccessWithEF.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CommentedBy");
+                    b.HasIndex("CommentedByUserId");
 
                     b.HasIndex("ParentBlogId");
 
@@ -123,7 +123,7 @@ namespace DataAccessWithEF.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<DateTimeOffset>("LastEditedTime")
+                    b.Property<DateTimeOffset?>("LastEditedTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Name")
@@ -140,13 +140,13 @@ namespace DataAccessWithEF.Migrations
                 {
                     b.HasOne("DataAccessWithEF.Models.User", "CreatedByUser")
                         .WithMany()
-                        .HasForeignKey("CreatedBy")
+                        .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("DataAccessWithEF.Models.User", "ReviewedByUser")
                         .WithMany()
-                        .HasForeignKey("ReviewedBy")
+                        .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("CreatedByUser");
@@ -158,7 +158,7 @@ namespace DataAccessWithEF.Migrations
                 {
                     b.HasOne("DataAccessWithEF.Models.User", "CommentedByUser")
                         .WithMany()
-                        .HasForeignKey("CommentedBy")
+                        .HasForeignKey("CommentedByUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

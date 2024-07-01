@@ -22,7 +22,7 @@ namespace DataAccessWithEF.Migrations
                     DOB = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     ContactNumber = table.Column<string>(type: "nvarchar(11)", maxLength: 11, nullable: true),
                     CreatedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -35,25 +35,25 @@ namespace DataAccessWithEF.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    CreatedBy = table.Column<int>(type: "int", nullable: false),
-                    ReviewedBy = table.Column<int>(type: "int", nullable: true),
-                    Content = table.Column<string>(type: "nvarchar(max)", maxLength: 12000, nullable: true),
+                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ReviewedByUserId = table.Column<int>(type: "int", nullable: true),
+                    Content = table.Column<string>(type: "nvarchar(max)", maxLength: 10000, nullable: true),
                     IsPublished = table.Column<bool>(type: "bit", nullable: false),
                     PublishedDate = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     CreatedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Blogs", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Blogs_Users_CreatedBy",
-                        column: x => x.CreatedBy,
+                        name: "FK_Blogs_Users_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
                         principalTable: "Users",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Blogs_Users_ReviewedBy",
-                        column: x => x.ReviewedBy,
+                        name: "FK_Blogs_Users_ReviewedByUserId",
+                        column: x => x.ReviewedByUserId,
                         principalTable: "Users",
                         principalColumn: "Id");
                 });
@@ -65,11 +65,11 @@ namespace DataAccessWithEF.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ParentBlogId = table.Column<int>(type: "int", nullable: false),
-                    CommentedBy = table.Column<int>(type: "int", nullable: false),
+                    CommentedByUserId = table.Column<int>(type: "int", nullable: false),
                     CommentedOn = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     CommentContent = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     CreatedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                    LastEditedTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -81,17 +81,17 @@ namespace DataAccessWithEF.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_BlogComments_Users_CommentedBy",
-                        column: x => x.CommentedBy,
+                        name: "FK_BlogComments_Users_CommentedByUserId",
+                        column: x => x.CommentedByUserId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlogComments_CommentedBy",
+                name: "IX_BlogComments_CommentedByUserId",
                 table: "BlogComments",
-                column: "CommentedBy");
+                column: "CommentedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BlogComments_ParentBlogId",
@@ -99,14 +99,14 @@ namespace DataAccessWithEF.Migrations
                 column: "ParentBlogId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Blogs_CreatedBy",
+                name: "IX_Blogs_CreatedByUserId",
                 table: "Blogs",
-                column: "CreatedBy");
+                column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Blogs_ReviewedBy",
+                name: "IX_Blogs_ReviewedByUserId",
                 table: "Blogs",
-                column: "ReviewedBy");
+                column: "ReviewedByUserId");
         }
 
         /// <inheritdoc />

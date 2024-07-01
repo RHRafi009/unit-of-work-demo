@@ -96,7 +96,7 @@ namespace UnitOfWorkDemo.Controllers
             return blogResponse;
         }
 
-        [HttpPost("UpdateBlog")]
+        [HttpPut("UpdateBlog")]
         public async Task<BlogResponseDto?> UpdateBlog(UpdateBlogDto updateBlog)
         {
             Blog? blog = await _unitOfWorkDemoDbContext
@@ -131,7 +131,7 @@ namespace UnitOfWorkDemo.Controllers
             return blogResponse;
         }
 
-        [HttpPost("DeleteBlog")]
+        [HttpDelete("DeleteBlog")]
         public async Task<bool> DeleteBlog(int blogId)
         {
             Blog? blog = await _unitOfWorkDemoDbContext
