@@ -1,22 +1,25 @@
 ﻿using DataAccess.Interfaces;
 using DataAccessWithEF;
+using DataAccessWithEF.Interfaces.Repositories;
+using DataAccessWithEF.Repositories;
 
 namespace DataAccess
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly UnitOfWorkDemoDbContext _dbContext; 
+        private readonly UnitOfWorkDemoDbContext _dbContext;
 
-        /*private ILogRepository _logRepository;
+        private IBlogRepository _blogRepository;
 
-        public ILogRepository LogEvents
+        public IBlogRepository BlogRepo
         {
-            get
+
+            get 
             {
-                _logRepository ??= new LogRepository(_dbContext);
-                return _logRepository;
-            }
-        }*/
+                _blogRepository ??= new BlogRepository(_dbContext);
+                return _blogRepository; 
+            } 
+        }
 
         public UnitOfWork(UnitOfWorkDemoDbContext dbContext)
         {

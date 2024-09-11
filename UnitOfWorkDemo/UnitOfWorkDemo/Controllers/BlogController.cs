@@ -1,9 +1,8 @@
-﻿using DataAccessWithEF;
+﻿using DataAccess.Interfaces;
+using DataAccessWithEF;
 using DataAccessWithEF.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.Design;
-using System.Reflection.Metadata;
 using UnitOfWorkDemo.Dtos;
 
 namespace UnitOfWorkDemo.Controllers
@@ -14,23 +13,28 @@ namespace UnitOfWorkDemo.Controllers
     {
         private readonly UnitOfWorkDemoDbContext _unitOfWorkDemoDbContext;
         private readonly ILogger<BlogController> _logger;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public BlogController(ILogger<BlogController> logger,
-            UnitOfWorkDemoDbContext unitOfWorkDemoDbContext)
+        public BlogController(
+            ILogger<BlogController> logger,
+            UnitOfWorkDemoDbContext unitOfWorkDemoDbContext,
+            IUnitOfWork unitOfWork)
         {
             _logger = logger;
             _unitOfWorkDemoDbContext = unitOfWorkDemoDbContext;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpGet("GetBlogs")]
         public async Task<IEnumerable<BlogResponseDto>> GetBlogs()
         {
-            List<BlogResponseDto> blogs = await _unitOfWorkDemoDbContext
-                .Blogs
-                .Include(b => b.CreatedByUser)
-                .Include(b => b.Comments)
-                .Where(b => b.IsPublished && !string.IsNullOrWhiteSpace(b.Content))
-                .OrderByDescending(b => b.PublishedDate)
+            IEnumerable<Blog> blogs = await _unitOfWork
+                .BlogRepo
+                .GetBlogsWithUserAndComments(
+                    b => b.IsPublished && !string.IsNullOrWhiteSpace(b.Content),
+                    blog => blog.OrderByDescending(b => b.PublishedDate));
+                
+            IEnumerable<BlogResponseDto> blogResponses = blogs
                 .Select(b => new BlogResponseDto()
                 {
                     BlogId = b.Id,
@@ -38,9 +42,7 @@ namespace UnitOfWorkDemo.Controllers
                     CreatedByEmail = b.CreatedByUser.Email,
                     PublishedOn = b.PublishedDate ?? DateTimeOffset.Now,
                     BlogContent = string.IsNullOrWhiteSpace(b.Content) ? string.Empty : b.Content,
-                    BlogComments = b.Comments != null ? 
-                        b.Comments
-                        .Where(c => !string.IsNullOrWhiteSpace(c.CommentContent))
+                    BlogComments = b.Comments?.Where(c => !string.IsNullOrWhiteSpace(c.CommentContent))
                         .Select(c => new BlogCommentResponseDto()
                         {
                             CommentId = c.Id,
@@ -50,11 +52,10 @@ namespace UnitOfWorkDemo.Controllers
                             CommentedOn = c.CommentedOn,
                             CommentContent = string.IsNullOrWhiteSpace(c.CommentContent) ? string.Empty : c.CommentContent,
                         })
-                        .ToList() : null,
-                })
-                .ToListAsync();
+                        .ToList(),
+                });
 
-            return blogs;
+            return blogResponses;
         }
 
         [HttpPost("CreateBlog")]

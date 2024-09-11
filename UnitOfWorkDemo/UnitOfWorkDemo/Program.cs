@@ -1,4 +1,8 @@
+using DataAccess;
+using DataAccess.Interfaces;
 using DataAccessWithEF;
+using DataAccessWithEF.Interfaces.Repositories;
+using DataAccessWithEF.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +17,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<UnitOfWorkDemoDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IBlogRepository, BlogRepository>();
 
 var app = builder.Build();
 
