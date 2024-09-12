@@ -10,6 +10,8 @@ namespace DataAccess
         private readonly UnitOfWorkDemoDbContext _dbContext;
 
         private IBlogRepository _blogRepository;
+        private IUserRepository _userRepository;
+        private IBlogCommentRepository _blogCommentRepository;
 
         public IBlogRepository BlogRepo
         {
@@ -19,6 +21,24 @@ namespace DataAccess
                 _blogRepository ??= new BlogRepository(_dbContext);
                 return _blogRepository; 
             } 
+        }
+
+        public IUserRepository UserRepo
+        {
+            get
+            {
+                _userRepository ??= new UserRepository(_dbContext);
+                return _userRepository;
+            }
+        }
+
+        public IBlogCommentRepository BlogCommentRepo
+        {
+            get
+            {
+                _blogCommentRepository ??= new BlogCommentRepository(_dbContext);
+                return _blogCommentRepository;
+            }
         }
 
         public UnitOfWork(UnitOfWorkDemoDbContext dbContext)

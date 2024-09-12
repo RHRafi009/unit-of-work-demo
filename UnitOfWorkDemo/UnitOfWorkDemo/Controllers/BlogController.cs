@@ -3,6 +3,7 @@ using DataAccessWithEF;
 using DataAccessWithEF.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using UnitOfWorkDemo.Dtos;
 
 namespace UnitOfWorkDemo.Controllers
@@ -11,22 +12,20 @@ namespace UnitOfWorkDemo.Controllers
     [Route("[controller]")]
     public class BlogController : ControllerBase
     {
-        private readonly UnitOfWorkDemoDbContext _unitOfWorkDemoDbContext;
         private readonly ILogger<BlogController> _logger;
         private readonly IUnitOfWork _unitOfWork;
 
         public BlogController(
             ILogger<BlogController> logger,
-            UnitOfWorkDemoDbContext unitOfWorkDemoDbContext,
             IUnitOfWork unitOfWork)
         {
             _logger = logger;
-            _unitOfWorkDemoDbContext = unitOfWorkDemoDbContext;
             _unitOfWork = unitOfWork;
         }
 
         [HttpGet("GetBlogs")]
-        public async Task<IEnumerable<BlogResponseDto>> GetBlogs()
+        [ProducesResponseType(typeof(IEnumerable<BlogResponseDto>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetBlogs()
         {
             IEnumerable<Blog> blogs = await _unitOfWork
                 .BlogRepo
@@ -55,148 +54,195 @@ namespace UnitOfWorkDemo.Controllers
                         .ToList(),
                 });
 
-            return blogResponses;
+            return Ok(blogResponses);
         }
 
         [HttpPost("CreateBlog")]
-        public async Task<BlogResponseDto?> CreateBlog(BlogCreateDto blog)
+        [ProducesResponseType(typeof(BlogResponseDto), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CreateBlog(BlogCreateDto blog)
         {
-            DataAccessWithEF.Models.User? CreatedByUser = await _unitOfWorkDemoDbContext
-                .Users
-                .Where(u => u.Id == blog.CreatedById)
-                .FirstOrDefaultAsync();
-
-            BlogResponseDto? blogResponse = null;
-
-            if (CreatedByUser is not null)
+            try
             {
-                Blog createdBlog = new Blog()
+                await _unitOfWork.BeginTransactionAsync();
+
+                User? User = await _unitOfWork
+                    .UserRepo
+                    .GetByIdAsync(blog.CreatedById);
+
+                BlogResponseDto? blogResponse = null;
+
+                if (User is not null)
                 {
-                    IsPublished = blog.IsPublished,
-                    PublishedDate = blog.IsPublished ? DateTimeOffset.Now : null,
-                    CreatedByUser = CreatedByUser,
-                    CreatedTime = DateTimeOffset.Now,
-                    LastEditedTime = DateTimeOffset.Now,
-                    Content = blog.Content
-                };
+                    Blog createdBlog = new Blog()
+                    {
+                        IsPublished = blog.IsPublished,
+                        PublishedDate = blog.IsPublished ? DateTimeOffset.Now : null,
+                        CreatedByUser = User,
+                        CreatedTime = DateTimeOffset.Now,
+                        LastEditedTime = DateTimeOffset.Now,
+                        Content = blog.Content
+                    };
 
-                _unitOfWorkDemoDbContext.Blogs.Add(createdBlog);
+                    await _unitOfWork.BlogRepo.AddAsync(createdBlog);
 
-                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+                    await _unitOfWork.SaveChnagesAsync();
+                    await _unitOfWork.CompleteTransactionAsync();
 
-                blogResponse = new BlogResponseDto()
-                {
-                    BlogId = createdBlog.Id,
-                    CreatedByName = createdBlog.CreatedByUser.Name,
-                    CreatedByEmail = createdBlog.CreatedByUser.Email,
-                    BlogContent = createdBlog.Content,
-                    PublishedOn = createdBlog.PublishedDate ?? DateTimeOffset.Now,
-                };
+                    blogResponse = new BlogResponseDto()
+                    {
+                        BlogId = createdBlog.Id,
+                        CreatedByName = createdBlog.CreatedByUser.Name,
+                        CreatedByEmail = createdBlog.CreatedByUser.Email,
+                        BlogContent = createdBlog.Content,
+                        PublishedOn = createdBlog.PublishedDate ?? DateTimeOffset.Now,
+                    };
+                }
+
+                return Ok(blogResponse);
             }
-
-            return blogResponse;
+            catch (Exception ex) 
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPut("UpdateBlog")]
-        public async Task<BlogResponseDto?> UpdateBlog(UpdateBlogDto updateBlog)
+        [ProducesResponseType(typeof(BlogResponseDto), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> UpdateBlog(UpdateBlogDto updateBlog)
         {
-            Blog? blog = await _unitOfWorkDemoDbContext
-                .Blogs
-                .Include(b => b.CreatedByUser)
-                .FirstOrDefaultAsync(b => b.Id == updateBlog.BlogId);
-
-            BlogResponseDto? blogResponse = null;
-
-            if (blog is not null)
+            try
             {
-                blog.LastEditedTime = DateTimeOffset.Now;
-                blog.IsPublished = updateBlog.IsPublished;
-                blog.PublishedDate = DateTimeOffset.Now;
-                blog.Content = updateBlog.Content;
+                await _unitOfWork.BeginTransactionAsync();
 
-                _unitOfWorkDemoDbContext.Blogs.Update(blog);
+                Blog? blog = await _unitOfWork
+                .BlogRepo
+                .GetBlogByIdWithUser(updateBlog.BlogId);
 
-                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+                BlogResponseDto? blogResponse = null;
 
-                blogResponse = new BlogResponseDto()
+                if (blog is not null)
                 {
-                    BlogId = blog.Id,
-                    CreatedByName = blog.CreatedByUser.Name,
-                    CreatedByEmail = blog.CreatedByUser.Email,
-                    PublishedOn = blog.PublishedDate ?? DateTimeOffset.Now,
-                    BlogContent = blog.Content,
-                    BlogComments = []
-                };
-            }
+                    blog.LastEditedTime = DateTimeOffset.Now;
+                    blog.IsPublished = updateBlog.IsPublished;
+                    blog.PublishedDate = DateTimeOffset.Now;
+                    blog.Content = updateBlog.Content;
 
-            return blogResponse;
+                    _unitOfWork.BlogRepo.Update(blog);
+                    await _unitOfWork.SaveChnagesAsync();
+                    await _unitOfWork.CompleteTransactionAsync();
+
+                    blogResponse = new BlogResponseDto()
+                    {
+                        BlogId = blog.Id,
+                        CreatedByName = blog.CreatedByUser.Name,
+                        CreatedByEmail = blog.CreatedByUser.Email,
+                        PublishedOn = blog.PublishedDate ?? DateTimeOffset.Now,
+                        BlogContent = blog.Content,
+                        BlogComments = []
+                    };
+                }
+
+                return Ok(blogResponse);
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpDelete("DeleteBlog")]
-        public async Task<bool> DeleteBlog(int blogId)
+        [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteBlog(int blogId)
         {
-            Blog? blog = await _unitOfWorkDemoDbContext
-                .Blogs
-                .Include(b => b.CreatedByUser)
-                .FirstOrDefaultAsync(b => b.Id == blogId);
-
-            bool result = false;
-
-            if (blog is not null)
+            try
             {
-                _unitOfWorkDemoDbContext.Blogs.Remove(blog);
+                await _unitOfWork.BeginTransactionAsync();
 
-                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+                Blog? blog = await _unitOfWork
+                    .BlogRepo
+                    .GetBlogByIdWithUser(blogId);
 
-                result = true;
+                bool result = false;
+
+                if (blog is not null)
+                {
+                    _unitOfWork.BlogRepo.Delete(blog);
+                    
+                    await _unitOfWork.SaveChnagesAsync();
+                    await _unitOfWork.CompleteTransactionAsync();
+
+                    result = true;
+                }
+
+                return Ok(result);
             }
-
-            return result;
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpPost("CreateBlogComment")]
-        public async Task<BlogCommentResponseDto?> CreateBlogComment(BlogCommentCreateDto blogComment)
+        [ProducesResponseType(typeof(BlogCommentResponseDto), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CreateBlogComment(BlogCommentCreateDto blogComment)
         {
-            DataAccessWithEF.Models.User? CreatedByUser = await _unitOfWorkDemoDbContext
-                .Users
-                .Where(u => u.Id == blogComment.CommentedById)
-                .FirstOrDefaultAsync();
-            Blog? blog = await _unitOfWorkDemoDbContext
-                .Blogs
-                .Where(b => b.Id == blogComment.BlogId)
-                .FirstOrDefaultAsync();
-
-            BlogCommentResponseDto? responseDto = null;
-
-            if (CreatedByUser is not null &&
-                blog is not null)
+            try
             {
-                BlogComment createdComment = new BlogComment()
+                await _unitOfWork.BeginTransactionAsync();
+
+                User? CreatedByUser = await _unitOfWork
+                    .UserRepo
+                    .GetByIdAsync(blogComment.CommentedById);
+
+                Blog? blog = await _unitOfWork
+                    .BlogRepo
+                    .GetByIdAsync(blogComment.BlogId);
+
+                BlogCommentResponseDto? responseDto = null;
+
+                if (CreatedByUser is not null &&
+                    blog is not null)
                 {
-                    ParentBlog = blog,
-                    CreatedTime = DateTimeOffset.Now,
-                    CommentedByUser = CreatedByUser,
-                    LastEditedTime = DateTimeOffset.Now,
-                    CommentedOn = DateTimeOffset.Now,
-                    CommentContent = blogComment.Comment
-                };
+                    BlogComment createdComment = new BlogComment()
+                    {
+                        ParentBlog = blog,
+                        CreatedTime = DateTimeOffset.Now,
+                        CommentedByUser = CreatedByUser,
+                        LastEditedTime = DateTimeOffset.Now,
+                        CommentedOn = DateTimeOffset.Now,
+                        CommentContent = blogComment.Comment
+                    };
 
-                _unitOfWorkDemoDbContext.BlogComments.Add(createdComment);
+                    await _unitOfWork.BlogCommentRepo.AddAsync(createdComment);
 
-                await _unitOfWorkDemoDbContext.SaveChangesAsync();
+                    await _unitOfWork.SaveChnagesAsync();
+                    await _unitOfWork.CompleteTransactionAsync();
 
-                responseDto = new BlogCommentResponseDto()
-                {
-                    CommentId = createdComment.Id,
-                    ParentBlogId = blog.Id,
-                    CommentedOn = createdComment.CommentedOn,
-                    CommentContent = createdComment.CommentContent,
-                    CommentedByEmail = createdComment.CommentedByUser.Email,
-                    CommentedByName = createdComment.CommentedByUser.Name
-                };
+                    responseDto = new BlogCommentResponseDto()
+                    {
+                        CommentId = createdComment.Id,
+                        ParentBlogId = blog.Id,
+                        CommentedOn = createdComment.CommentedOn,
+                        CommentContent = createdComment.CommentContent,
+                        CommentedByEmail = createdComment.CommentedByUser.Email,
+                        CommentedByName = createdComment.CommentedByUser.Name
+                    };
+                }
+
+                return Ok(responseDto);
             }
-
-            return responseDto;
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
     }
 }

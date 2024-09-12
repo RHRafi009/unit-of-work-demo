@@ -12,6 +12,16 @@ namespace DataAccessWithEF.Repositories
 
         }
 
+        public async Task<Blog?> GetBlogByIdWithUser(int id)
+        {
+            Blog? blog = await _dbContext
+                .Set<Blog>()
+                .Include(b => b.CreatedByUser)
+                .Where(b => b.Id == id)
+                .FirstOrDefaultAsync();
+            return blog;
+        }
+
         public async Task<IEnumerable<Blog>> GetBlogsWithUserAndComments(
             Expression<Func<Blog, bool>>? predicate = null,
             Func<IQueryable<Blog>, IOrderedQueryable<Blog>>? orderBy = null,
