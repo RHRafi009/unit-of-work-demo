@@ -1,7 +1,7 @@
-﻿using DataAccessWithEF;
+﻿using DataAccess.Interfaces;
 using DataAccessWithEF.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using System.Net;
 using UnitOfWorkDemo.Dtos;
 
 namespace UnitOfWorkDemo.Controllers
@@ -10,61 +10,85 @@ namespace UnitOfWorkDemo.Controllers
     [Route("[controller]")]
     public class UserController : Controller
     {
-        private readonly UnitOfWorkDemoDbContext _unitOfWorkDemoDbContext;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public UserController(UnitOfWorkDemoDbContext unitOfWorkDemoDbContext)
+        public UserController(IUnitOfWork unitOfWork)
         {
-            _unitOfWorkDemoDbContext = unitOfWorkDemoDbContext;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpPost("CreateUser")]
-        public async Task<UserResponseDto> CreateUser(CreateUserDto createUser)
+        [ProducesResponseType(typeof(UserResponseDto), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CreateUser(CreateUserDto createUser)
         {
-            User user = new User()
+            try
             {
-                Name = createUser.UserName,
-                Email = createUser.UserEmail,
-                DOB = createUser.DOB,
-                ContactNumber = createUser.ContactNumber,
-                CreatedTime = DateTimeOffset.Now,
-                LastEditedTime = DateTimeOffset.Now
-            };
+                await _unitOfWork.BeginTransactionAsync();
 
-            _unitOfWorkDemoDbContext.Users.Add(user);
+                User user = new User()
+                {
+                    Name = createUser.UserName,
+                    Email = createUser.UserEmail,
+                    DOB = createUser.DOB,
+                    ContactNumber = createUser.ContactNumber,
+                    CreatedTime = DateTimeOffset.Now,
+                    LastEditedTime = DateTimeOffset.Now
+                };
 
-            await _unitOfWorkDemoDbContext.SaveChangesAsync();
+                await _unitOfWork.UserRepo.AddAsync(user);
 
-            return new UserResponseDto()
-            {
-                UserId = user.Id,
-                UserEmail = user.Email,
-                UserName = user.Name
-            };
-        }
+                await _unitOfWork.SaveChnagesAsync();
+                await _unitOfWork.CompleteTransactionAsync();
 
-        [HttpDelete("DeleteUser")]
-        public async Task<UserResponseDto?> DeleteUser(int userId)
-        {
-            User? user = await _unitOfWorkDemoDbContext
-                .Users
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user is not null)
-            {
-                _unitOfWorkDemoDbContext.Users.Remove(user);
-
-                await _unitOfWorkDemoDbContext.SaveChangesAsync();
-
-                return new UserResponseDto()
+                return Ok(new UserResponseDto()
                 {
                     UserId = user.Id,
                     UserEmail = user.Email,
                     UserName = user.Name
-                };
+                });
             }
-            else 
+            catch (Exception ex) 
             { 
-                return null; 
+                await _unitOfWork.RollbackTransactionAsync();
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpDelete("DeleteUser")]
+        [ProducesResponseType(typeof(UserResponseDto), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteUser(int userId)
+        {
+            try
+            {
+                await _unitOfWork.BeginTransactionAsync();
+
+                User? user = await _unitOfWork
+                .UserRepo
+                .GetByIdAsync(userId);
+
+                if (user is not null)
+                {
+                    _unitOfWork.UserRepo.Delete(user);
+
+                    await _unitOfWork.SaveChnagesAsync();
+                    await _unitOfWork.CompleteTransactionAsync();
+
+                    return Ok(new UserResponseDto()
+                    {
+                        UserId = user.Id,
+                        UserEmail = user.Email,
+                        UserName = user.Name
+                    });
+                }
+                else
+                {
+                    return Ok();
+                }
+            }
+            catch (Exception ex) 
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                return StatusCode(500, ex.Message);
             }
         }
     }
